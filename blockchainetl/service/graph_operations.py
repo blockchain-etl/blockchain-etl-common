@@ -20,8 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-
-from blockchainetl.utils import pairwise
+import itertools
 
 MAX_ITERATIONS_FIND_POINT_AROUND = 119
 
@@ -195,6 +194,13 @@ def bound(x, bounds):
         return x2 - 1
     else:
         return x
+
+
+def pairwise(iterable):
+    """s -> (s0,s1), (s1,s2), (s2, s3), ..."""
+    a, b = itertools.tee(iterable)
+    next(b, None)
+    return zip(a, b)
 
 
 class OutOfBoundsError(Exception):
