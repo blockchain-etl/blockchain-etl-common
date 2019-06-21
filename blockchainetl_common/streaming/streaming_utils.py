@@ -2,13 +2,13 @@ import logging
 import signal
 import sys
 
-from blockchainetl.jobs.exporters.console_item_exporter import ConsoleItemExporter
-from blockchainetl.logging_utils import logging_basic_config
+from blockchainetl_common.jobs.exporters.console_item_exporter import ConsoleItemExporter
+from blockchainetl_common.logging_utils import logging_basic_config
 
 
 def get_item_exporter(output):
     if output is not None:
-        from blockchainetl.jobs.exporters.google_pubsub_item_exporter import GooglePubSubItemExporter
+        from blockchainetl_common.jobs.exporters.google_pubsub_item_exporter import GooglePubSubItemExporter
         item_exporter = GooglePubSubItemExporter(item_type_to_topic_mapping={
             'block': output + '.blocks',
             'transaction': output + '.transactions',

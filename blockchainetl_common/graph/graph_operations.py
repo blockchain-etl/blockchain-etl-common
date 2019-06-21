@@ -22,14 +22,19 @@
 
 import itertools
 
-MAX_ITERATIONS_FIND_POINT_AROUND = 119
-
 
 class GraphOperations(object):
-    def __init__(self, graph):
-        """x axis on the graph must be integers"""
+    def __init__(self, graph, max_not_monotonic_points=10, prefetch_size=5):
+        """x axis on the graph must be integers.
+        max_not_monotonic_points indicates the maximum difference of the x coordinate for any two points
+        (x1, y1) and (x2, y2) such that x2 > x1 and y2 <= y1.
+        For strictly increasing y max_not_monotonic_points should be 0.
+        If prefetch_size is greater than 0 graph must implement get_points(xs) method."""
+
         self._graph = graph
         self._cached_points = []
+        self._max_not_monotonic_points = max_not_monotonic_points
+        self._prefetch_size = prefetch_size
 
     def get_bounds_for_y_coordinate(self, y):
         """given the y coordinate, outputs a pair of x coordinates for closest points that bound the y coordinate.
@@ -40,9 +45,12 @@ class GraphOperations(object):
 
         bounds = self._get_bounds_for_y_coordinate_recursive(y, *initial_bounds)
 
-        # block times in Bitcoin are not monotonic so need to find other bounds around the found ones
-        result = self._find_point_around_y(y, bounds[0], find_below=True, move_left=False), \
-                 self._find_point_around_y(y, bounds[1], find_below=False, move_left=True)
+        if self._max_not_monotonic_points > 0:
+            # in case block times are not monotonic we need to find other bounds around the found ones
+            result = self._find_point_around_y(y, bounds[0], find_below=True, move_left=False), \
+                     self._find_point_around_y(y, bounds[1], find_below=False, move_left=True)
+        else:
+            result = bounds
 
         return result
 
@@ -96,6 +104,7 @@ class GraphOperations(object):
         find_above = not find_below
         move_right = not move_left
 
+        first_point = self._get_first_point()
         last_point = self._get_last_point()
         point = self._get_point(x)
 
@@ -104,13 +113,14 @@ class GraphOperations(object):
         iteration = 0
 
         increment = - 1 if move_left else 1
-        while iteration < MAX_ITERATIONS_FIND_POINT_AROUND and 0 <= (next_point.x + increment) <= last_point.x:
+        while iteration < self._max_not_monotonic_points \
+                and first_point.x <= (next_point.x + increment) <= last_point.x:
             prev_point = next_point
 
             next_point_x = next_point.x + increment
 
-            prefetch_left = min(20 if move_left else 0, next_point_x)
-            prefetch_right = min(20 if move_right else 0, max(last_point.x - next_point_x - 1, 0))
+            prefetch_left = min(self._prefetch_size if move_left else 0, next_point_x - first_point.x)
+            prefetch_right = min(self._prefetch_size if move_right else 0, max(last_point.x - next_point_x - 1, 0))
             next_point = self._get_point(next_point_x, prefetch_left=prefetch_left, prefetch_right=prefetch_right)
 
             if find_below and move_left and (next_point.y == y or next_point.y < y < prev_point.y):
@@ -214,3 +224,6 @@ class Point(object):
 
     def __str__(self):
         return '({},{})'.format(self.x, self.y)
+
+    def __repr__(self):
+        return 'Point({},{})'.format(self.x, self.y)

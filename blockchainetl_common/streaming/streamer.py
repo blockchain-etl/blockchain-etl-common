@@ -25,8 +25,8 @@ import logging
 import os
 import time
 
-from blockchainetl.streaming.streamer_adapter_stub import StreamerAdapterStub
-from blockchainetl.file_utils import smart_open
+from blockchainetl_common.streaming.streamer_adapter_stub import StreamerAdapterStub
+from blockchainetl_common.file_utils import smart_open
 
 
 class Streamer:

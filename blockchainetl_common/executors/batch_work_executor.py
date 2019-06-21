@@ -25,12 +25,12 @@ import time
 
 from requests.exceptions import Timeout as RequestsTimeout, HTTPError, TooManyRedirects
 
-from blockchainetl.executors.bounded_executor import BoundedExecutor
-from blockchainetl.executors.fail_safe_executor import FailSafeExecutor
-from blockchainetl.progress_logger import ProgressLogger
-from blockchainetl.utils import dynamic_batch_iterator
+from blockchainetl_common.executors.bounded_executor import BoundedExecutor
+from blockchainetl_common.executors.fail_safe_executor import FailSafeExecutor
+from blockchainetl_common.progress_logger import ProgressLogger
+from blockchainetl_common.utils import dynamic_batch_iterator
 
-from blockchainetl.executors.retriable_value_error import RetriableValueError
+from blockchainetl_common.executors.retriable_value_error import RetriableValueError
 
 RETRY_EXCEPTIONS = (ConnectionError, HTTPError, RequestsTimeout, TooManyRedirects, OSError, RetriableValueError)
 
