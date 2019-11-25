@@ -29,9 +29,13 @@ from timeout_decorator import timeout_decorator
 
 class GooglePubSubItemExporter:
 
-    def __init__(self, item_type_to_topic_mapping):
+    def __init__(self, item_type_to_topic_mapping, batch_max_bytes=1024 * 5, batch_max_latency=1, batch_max_messages=1000):
         self.item_type_to_topic_mapping = item_type_to_topic_mapping
         self.publisher = create_publisher()
+
+        self.batch_max_bytes = batch_max_bytes
+        self.batch_max_latency = batch_max_latency
+        self.batch_max_messages = batch_max_messages
 
     def open(self):
         pass
@@ -75,9 +79,9 @@ class GooglePubSubItemExporter:
 
 def create_publisher():
     batch_settings = pubsub_v1.types.BatchSettings(
-        max_bytes=1024 * 5,  # 5 kilobytes
-        max_latency=1,  # 1 second
-        max_messages=1000,
+        max_bytes=self.batch_max_bytes,
+        max_latency=self.batch_max_latency,
+        max_messages=self.batch_max_messages,
     )
 
     return pubsub_v1.PublisherClient(batch_settings)
