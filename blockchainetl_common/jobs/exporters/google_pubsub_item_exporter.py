@@ -31,11 +31,12 @@ class GooglePubSubItemExporter:
 
     def __init__(self, item_type_to_topic_mapping, batch_max_bytes=1024 * 5, batch_max_latency=1, batch_max_messages=1000):
         self.item_type_to_topic_mapping = item_type_to_topic_mapping
-        self.publisher = create_publisher()
 
         self.batch_max_bytes = batch_max_bytes
         self.batch_max_latency = batch_max_latency
         self.batch_max_messages = batch_max_messages
+
+        self.publisher = self.create_publisher()
 
     def open(self):
         pass
@@ -49,7 +50,7 @@ class GooglePubSubItemExporter:
             # details = "channel is in state TRANSIENT_FAILURE"
             # https://stackoverflow.com/questions/55552606/how-can-one-catch-exceptions-in-python-pubsub-subscriber-that-are-happening-in-i?noredirect=1#comment97849067_55552606
             logging.info('Recreating Pub/Sub publisher.')
-            self.publisher = create_publisher()
+            self.publisher = self.create_publisher()
             raise e
 
     @timeout_decorator.timeout(300)
@@ -73,15 +74,14 @@ class GooglePubSubItemExporter:
         else:
             logging.warning('Topic for item type "{}" is not configured.'.format(item_type))
 
+    def create_publisher(self):
+        batch_settings = pubsub_v1.types.BatchSettings(
+            max_bytes=self.batch_max_bytes,
+            max_latency=self.batch_max_latency,
+            max_messages=self.batch_max_messages,
+        )
+
+        return pubsub_v1.PublisherClient(batch_settings)
+
     def close(self):
         pass
-
-
-def create_publisher():
-    batch_settings = pubsub_v1.types.BatchSettings(
-        max_bytes=self.batch_max_bytes,
-        max_latency=self.batch_max_latency,
-        max_messages=self.batch_max_messages,
-    )
-
-    return pubsub_v1.PublisherClient(batch_settings)
