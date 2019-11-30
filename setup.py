@@ -11,7 +11,7 @@ long_description = read('README.md') if os.path.isfile("README.md") else ""
 
 setup(
     name='blockchain-etl-common',
-    version='1.1.1',
+    version='1.2.0',
     author='Evgeny Medvedev',
     author_email='evge.medvedev@gmail.com',
     description='Common utils for Blockchain ETL',
