@@ -151,7 +151,7 @@ class CsvItemExporter(BaseItemExporter):
             if not self.fields_to_export:
                 if isinstance(item, dict):
                     # for dicts try using fields of the first item
-                    self.fields_to_export = list(item.keys())
+                    self.fields_to_export = sorted(list(item.keys()))
                 else:
                     # use fields declared in Item
                     self.fields_to_export = list(item.fields.keys())
