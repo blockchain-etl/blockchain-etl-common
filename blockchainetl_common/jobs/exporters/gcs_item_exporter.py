@@ -68,8 +68,10 @@ class GcsItemExporter:
     def __init__(
             self,
             bucket,
+            path='blocks',
             build_block_bundles_func=build_block_bundles):
         self.bucket = bucket
+        self.path = normalize_path(path)
         self.build_block_bundles_func = build_block_bundles_func
         self.storage_client = storage.Client()
 
@@ -87,7 +89,7 @@ class GcsItemExporter:
             if block_number is None:
                 raise ValueError('block_bundle must include the block.number field')
 
-            destination_blob_name = f'blocks/{block_number}.json'
+            destination_blob_name = f'{self.path}/{block_number}.json'
 
             bucket = self.storage_client.bucket(self.bucket)
             blob = bucket.blob(destination_blob_name)
@@ -98,3 +100,12 @@ class GcsItemExporter:
         pass
 
 
+def normalize_path(p):
+    if p is None:
+        p = ''
+    if p.startswith('/'):
+        p = p[1:]
+    if p.endswith('/'):
+        p = p[:len(p) - 1]
+
+    return p
