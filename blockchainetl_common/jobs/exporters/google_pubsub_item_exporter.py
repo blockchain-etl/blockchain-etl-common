@@ -30,12 +30,15 @@ from timeout_decorator import timeout_decorator
 class GooglePubSubItemExporter:
 
     def __init__(self, item_type_to_topic_mapping, message_attributes=(),
-                 batch_max_bytes=1024 * 5, batch_max_latency=1, batch_max_messages=1000):
+            batch_max_bytes=1024 * 5, batch_max_latency=1, batch_max_messages=1000,
+            enable_message_ordering=False):
         self.item_type_to_topic_mapping = item_type_to_topic_mapping
 
         self.batch_max_bytes = batch_max_bytes
         self.batch_max_latency = batch_max_latency
         self.batch_max_messages = batch_max_messages
+
+        self.enable_message_ordering = enable_message_ordering
 
         self.publisher = self.create_publisher()
 
@@ -72,7 +75,9 @@ class GooglePubSubItemExporter:
         if item_type is not None and item_type in self.item_type_to_topic_mapping:
             topic_path = self.item_type_to_topic_mapping.get(item_type)
             data = json.dumps(item).encode('utf-8')
-            message_future = self.publisher.publish(topic_path, data=data, **self.get_message_attributes(item))
+
+            ordering_key = 'all' if self.enable_message_ordering else ''
+            message_future = self.publisher.publish(topic_path, data=data, ordering_key=ordering_key, **self.get_message_attributes(item))
             return message_future
         else:
             logging.warning('Topic for item type "{}" is not configured.'.format(item_type))
@@ -82,7 +87,7 @@ class GooglePubSubItemExporter:
 
         for attr_name in self.message_attributes:
             if item.get(attr_name) is not None:
-                attributes[attr_name] = item.get(attr_name)
+                attributes[attr_name] = str(item.get(attr_name))
 
         return attributes
 
@@ -93,7 +98,8 @@ class GooglePubSubItemExporter:
             max_messages=self.batch_max_messages,
         )
 
-        return pubsub_v1.PublisherClient(batch_settings)
+        publisher_options = pubsub_v1.types.PublisherOptions(enable_message_ordering=self.enable_message_ordering)
+        return pubsub_v1.PublisherClient(batch_settings=batch_settings, publisher_options=publisher_options)
 
     def close(self):
         pass
