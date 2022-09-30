@@ -107,7 +107,8 @@ class CsvItemExporter(BaseItemExporter):
             file,
             line_buffering=False,
             write_through=True,
-            encoding=self.encoding
+            encoding=self.encoding,
+            newline=''
         ) if six.PY3 else file
         self.csv_writer = csv.writer(self.stream, **kwargs)
         self._headers_not_written = True
