@@ -20,6 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import concurrent
 import json
 import logging
 from collections import defaultdict
@@ -69,10 +70,13 @@ class GcsItemExporter:
             self,
             bucket,
             path='blocks',
-            build_block_bundles_func=build_block_bundles):
+            build_block_bundles_func=build_block_bundles,
+            max_workers=1,
+        ):
         self.bucket = bucket
         self.path = normalize_path(path)
         self.build_block_bundles_func = build_block_bundles_func
+        self.max_workers = max_workers
         self.storage_client = storage.Client()
 
     def open(self):
@@ -81,20 +85,28 @@ class GcsItemExporter:
     def export_items(self, items):
         block_bundles = self.build_block_bundles_func(items)
 
-        for block_bundle in block_bundles:
-            block = block_bundle.get('block')
-            if block is None:
-                raise ValueError('block_bundle must include the block field')
-            block_number = block.get('number')
-            if block_number is None:
-                raise ValueError('block_bundle must include the block.number field')
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            futures = [
+                executor.submit(self.upload_block_bundle, block_bundle)
+                for block_bundle in block_bundles
+            ]
+            for future in concurrent.futures.as_completed(futures):
+                future.result()
 
-            destination_blob_name = f'{self.path}/{block_number}.json'
+    def upload_block_bundle(self, block_bundle):
+        block = block_bundle.get('block')
+        if block is None:
+            raise ValueError('block_bundle must include the block field')
+        block_number = block.get('number')
+        if block_number is None:
+            raise ValueError('block_bundle must include the block.number field')
 
-            bucket = self.storage_client.bucket(self.bucket)
-            blob = bucket.blob(destination_blob_name)
-            blob.upload_from_string(json.dumps(block_bundle))
-            logging.info(f'Uploaded file gs://{self.bucket}/{destination_blob_name}')
+        destination_blob_name = f'{self.path}/{block_number}.json'
+
+        bucket = self.storage_client.bucket(self.bucket)
+        blob = bucket.blob(destination_blob_name)
+        blob.upload_from_string(json.dumps(block_bundle))
+        logging.info(f'Uploaded file gs://{self.bucket}/{destination_blob_name}')
 
     def close(self):
         pass
