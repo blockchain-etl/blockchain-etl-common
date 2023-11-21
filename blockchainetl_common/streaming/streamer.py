@@ -39,15 +39,38 @@ class Streamer:
             end_block=None,
             period_seconds=10,
             block_batch_size=10,
+            ramp_up_blocks=0,
             retry_errors=True,
             pid_file=None):
+        """
+        Initializes a new instance of the Streamer class.
+
+        Parameters:
+        - blockchain_streamer_adapter (StreamerAdapter, optional): Adapter for interacting with the blockchain. Default is StreamerAdapterStub().
+        - last_synced_block_file (str, optional): Path to the file storing the last synced block number. Default is 'last_synced_block.txt'.
+        - lag (int, optional): Number of blocks to stay behind the current block. Default is 0.
+        - start_block (int, optional): The starting block number for syncing. Default is None.
+        - end_block (int, optional): The ending block number for syncing. Default is None.
+        - period_seconds (int, optional): Time interval in seconds between sync cycles. Default is 10.
+        - block_batch_size (int, optional): Number of blocks to process per batch. Default is 10.
+        - ramp_up_blocks (int, optional): Specifies the count of initial blocks to be processed one by one before switching to batch processing. This approach is particularly beneficial for mitigating issues like Out-of-Memory (OOM) errors when dealing with large batches. Default is 0.
+        - retry_errors (bool, optional): Whether to retry on errors during syncing. Default is True.
+        - pid_file (str, optional): File path for writing the process ID. Default is None.
+
+        Description:
+        This method sets up a new Streamer instance for blockchain data streaming. It configures the blockchain adapter, file paths, and synchronization parameters. The single_block_ramp_up_count parameter enables initial processing of blocks individually, allowing for a smooth transition to batch processing. The method also handles the initialization of the last synced block file, taking into account the provided start_block parameter and the existence of the last synced block file.
+        """
         self.blockchain_streamer_adapter = blockchain_streamer_adapter
         self.last_synced_block_file = last_synced_block_file
         self.lag = lag
         self.start_block = start_block
         self.end_block = end_block
         self.period_seconds = period_seconds
+
         self.block_batch_size = block_batch_size
+        self.ramp_up_blocks = ramp_up_blocks
+        self.processed_blocks_count = 0
+
         self.retry_errors = retry_errors
         self.pid_file = pid_file
 
@@ -88,7 +111,12 @@ class Streamer:
     def _sync_cycle(self):
         current_block = self.blockchain_streamer_adapter.get_current_block_number()
 
-        target_block = self._calculate_target_block(current_block, self.last_synced_block)
+        if self.ramp_up_blocks and self.ramp_up_blocks > 0 and self.processed_blocks_count <= self.ramp_up_blocks:
+            block_batch_size = 1
+        else:
+            block_batch_size = self.block_batch_size
+
+        target_block = self._calculate_target_block(current_block, self.last_synced_block, block_batch_size)
         blocks_to_sync = max(target_block - self.last_synced_block, 0)
 
         logging.info('Current block {}, target block {}, last synced block {}, blocks to sync {}'.format(
@@ -100,11 +128,13 @@ class Streamer:
             write_last_synced_block(self.last_synced_block_file, target_block)
             self.last_synced_block = target_block
 
+            self.processed_blocks_count += blocks_to_sync
+
         return blocks_to_sync
 
-    def _calculate_target_block(self, current_block, last_synced_block):
+    def _calculate_target_block(self, current_block, last_synced_block, block_batch_size):
         target_block = current_block - self.lag
-        target_block = min(target_block, last_synced_block + self.block_batch_size)
+        target_block = min(target_block, last_synced_block + block_batch_size)
         target_block = min(target_block, self.end_block) if self.end_block is not None else target_block
         return target_block
 
