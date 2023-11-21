@@ -111,11 +111,8 @@ class Streamer:
     def _sync_cycle(self):
         current_block = self.blockchain_streamer_adapter.get_current_block_number()
 
-        if self.ramp_up_blocks and self.ramp_up_blocks > 0:
-            if self.processed_blocks_count > self.ramp_up_blocks:
-                block_batch_size = self.block_batch_size
-            else:
-                block_batch_size = 1
+        if self.ramp_up_blocks and self.ramp_up_blocks > 0 and self.processed_blocks_count <= self.ramp_up_blocks:
+            block_batch_size = 1
         else:
             block_batch_size = self.block_batch_size
 
